@@ -482,9 +482,14 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 			 	LogDebug("Position: %02d %02d.%03d%s, %03d %02d.%03d%s at Alt of %dm",	latDeg, latMin, latSec,latSign,
 										                      							lonDeg, lonMin, lonSec, lonSign, alt);
 				
-                float latitude = (latDeg*360 + latMin*60 + latSec)/360.0; 
-                float longitude = (lonDeg*360 + lonMin*60 + lonSec)/360.0; 
-                LogDebug("Converted GPS to %f, %f", latitude, longitude);
+                
+                double lMin = latMin / (double)60;
+                double lSec = latSec / (double)3600;
+                double latitude = latDeg + lMin + lSec;
+
+                double longitude = lonDeg + (lonMin/60) + (lonSec/3600);
+
+                LogDebug("Converted GPS to %d, %d", latitude, longitude);
                 m_aprshelper->send(src.c_str(), latitude, longitude);
                 
 				// Winging it completely! All I can say is it doesn't crash! 
