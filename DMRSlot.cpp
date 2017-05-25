@@ -426,7 +426,10 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 
 			unsigned int srcId = 3117722; // Grabs the Global value... FixMe
 			unsigned int dstId = 9;   // APRS Destination for Ireland
-			LogDebug("Using src: %d, dst: %d", srcId, dstId);
+            
+            std::string src = m_lookup->find(srcId);
+            
+			LogDebug("Using src: %d (%s), dst: %d", srcId, src.c_str(), dstId);
 			if (!CDMRAccessControl::validateSrcId(srcId)) {
 				LogMessage("DMR Slot %u, RF user %u rejected", m_slotNo, srcId);
 				return false;
@@ -482,7 +485,7 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
                 float latitude = (latDeg*360 + latMin*60 + latSec)/360.0; 
                 float longitude = (lonDeg*360 + lonMin*60 + lonSec)/360.0; 
                 LogDebug("Converted GPS to %f, %f", latitude, longitude);
-                m_aprshelper->send("N9OTJ", latitude, longitude);
+                m_aprshelper->send(src.c_str(), latitude, longitude);
                 
 				// Winging it completely! All I can say is it doesn't crash! 
 				// Does BM even accept this type of data frame?

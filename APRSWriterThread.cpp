@@ -102,22 +102,18 @@ void CAPRSWriterThread::entry()
 				m_connected = connect();
 
 				if (!m_connected){
-                                        ::fprintf(stdout, "Reconnect Failed\n");
 					LogError("Reconnect attempt to the APRS server has failed");
 					sleep(10000UL);		// 10 secs
 				}
 			}
 
 			if (m_connected) {
-                                ::fprintf(stdout, "Connected....\n");
 				if (!m_queue.isEmpty()){
-                                    ::fprintf(stdout, "Message on the queue\n");
                                     
 					char* p = NULL;
 					m_queue.getData(&p, 1U);
 
 					LogMessage("APRS ==> %s", p);
-                                        ::fprintf(stdout, "Writing to APRS Server: %s \n", p);
 
 					::strcat(p, "\r\n");
 
@@ -132,7 +128,6 @@ void CAPRSWriterThread::entry()
 					delete[] p;
 				}
 				{
-                                    ::fprintf(stdout, "No Messages\n");
 					std::string line;
 					int length = m_socket.readLine(line, APRS_TIMEOUT);
 
