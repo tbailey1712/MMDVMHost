@@ -14,6 +14,12 @@
 *   You should have received a copy of the GNU General Public License
 *   along with this program; if not, write to the Free Software
 *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*
+*
+************************************************************
+*
+*   A wrapper class for the APRS utilities send GPS data to an APRS server
+*
 */
 
 #include "APRSHelper.h"
@@ -65,6 +71,12 @@ void CAPRSHelper::close()
 {
     m_writer.close();
 }
+
+/*
+ *   Uncomment this section for local testing and build it without MMDVMHost in the Makefile
+ */
+
+
 /*
 int main(void)
 {
@@ -76,13 +88,16 @@ int main(void)
 	CAPRSHelper* helper = new CAPRSHelper(callsign, suffix, password, address, port);
 
 	helper->open();
+    // Wait 6 seconds for the server to connect before sending data
     usleep(1000*1000*6);
     
+    // Send the GPS packet
     helper->send();
     
+    // Need to go into an endless loop and give the APRSWriterThread time to cycle through the message queue
     for (;;)
     {
-        
+        // Ctrl-C out of the test program once the packet is sent
     }
 
 	delete helper;

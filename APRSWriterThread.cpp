@@ -92,7 +92,6 @@ bool CAPRSWriterThread::start()
 void CAPRSWriterThread::entry()
 {
 	LogMessage("Starting the APRS Writer thread");
-        ::fprintf(stdout, "Starting the Writer thread\n");
 
 	m_connected = connect();
 
@@ -121,7 +120,6 @@ void CAPRSWriterThread::entry()
 					if (!ret) {
 						m_connected = false;
 						m_socket.close();
-                                                ::fprintf(stdout, "Connecting to the thread failed\n");
 						LogError("Connection to the APRS thread has failed");
 					}
 
@@ -134,7 +132,6 @@ void CAPRSWriterThread::entry()
 					if (length < 0) {
 						m_connected = false;
 						m_socket.close();
-                                                ::fprintf(stdout, "Error reading from APRS server\n");
 						LogError("Error when reading from the APRS server");
 					}
 
@@ -159,16 +156,13 @@ void CAPRSWriterThread::entry()
 		}
 	}
 	catch (std::exception& e) {
-            ::fprintf(stdout, "Exception in writer threadt\n");
 		LogError("Exception raised in the APRS Writer thread - \"%s\"", e.what());
 	}
 	catch (...) {
-            ::fprintf(stdout, "Unknown Exception in writer threadt\n");
 
             LogError("Unknown exception raised in the APRS Writer thread");
 	}
         
-        ::fprintf(stdout, "Stopping the writer \n");
 
 	LogMessage("Stopping the APRS Writer thread");
 }
@@ -184,7 +178,6 @@ void CAPRSWriterThread::write(const char* data)
 
 	if (!m_connected)
         {
-            ::fprintf(stdout, "Not Connected \n");
 		return;
         }
 
@@ -210,7 +203,6 @@ void CAPRSWriterThread::stop()
 
 bool CAPRSWriterThread::connect()
 {
-        ::fprintf(stdout, "Attempting to Connect \n");
 	bool ret = m_socket.open();
 	if (!ret)
 		return false;
@@ -220,14 +212,12 @@ bool CAPRSWriterThread::connect()
 	std::string serverResponse;
 	length = m_socket.readLine(serverResponse, APRS_TIMEOUT);
 	if (length == 0) {
-            ::fprintf(stdout, "No Response from the server \n");
 		LogError("No reply from the APRS server after %u seconds", APRS_TIMEOUT);
 		m_socket.close();
 		return false;
 	}
 
 	LogMessage("Received login banner : %s", serverResponse.c_str());
-        ::fprintf(stdout, "Received login banner : %s", serverResponse.c_str());
         
 
 	std::string filter(m_filter);
@@ -258,7 +248,6 @@ bool CAPRSWriterThread::connect()
 
 	LogMessage("Response from APRS server: %s", serverResponse.c_str());
 
-        ::fprintf(stdout, "Response from APRS server: %s", serverResponse.c_str());
 	LogMessage("Connected to the APRS server");
 
 	return true;
