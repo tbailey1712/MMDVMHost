@@ -24,6 +24,7 @@
 #include "Sync.h"
 #include "CRC.h"
 #include "Log.h"
+#include "APRSHelper.h"
 
 #include <cassert>
 #include <ctime>
@@ -64,6 +65,7 @@ const unsigned char TALKER_ID_BLOCK3 = 0x08U;
 const unsigned int NO_HEADERS_SIMPLEX = 8U;
 const unsigned int NO_HEADERS_DUPLEX  = 3U;
 
+CAPRSHelper* m_aprshelper = NULL;
 // FixMe. Need somehwere to hold DMR Source ID from previous frame. 
 unsigned int GPSsrcId = 0U;
 // #define	DUMP_DMR
@@ -275,7 +277,7 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 				m_display->writeDMRRSSI(m_slotNo, m_rssi);
 			}
 
-			LogMessage("DMR Slot %u, received RF voice header from %s to %s%s", m_slotNo, src.c_str(), flco == FLCO_GROUP ? "TG " : "", dst.c_str());
+			LogMessage(">>DMR Slot %u, received RF voice header from %s to %s%s", m_slotNo, src.c_str(), flco == FLCO_GROUP ? "TG " : "", dst.c_str());
 
 			return true;
 		} else if (dataType == DT_VOICE_PI_HEADER) {
@@ -331,9 +333,9 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 			}
 
 			if (m_rssi != 0U)
-				LogMessage("DMR Slot %u, received RF end of voice transmission, %.1f seconds, BER: %.1f%%, RSSI: -%u/-%u/-%u dBm", m_slotNo, float(m_rfFrames) / 16.667F, float(m_rfErrs * 100U) / float(m_rfBits), m_minRSSI, m_maxRSSI, m_aveRSSI / m_rssiCount);
+				LogMessage(">>DMR Slot %u, received RF end of voice transmission, %.1f seconds, BER: %.1f%%, RSSI: -%u/-%u/-%u dBm", m_slotNo, float(m_rfFrames) / 16.667F, float(m_rfErrs * 100U) / float(m_rfBits), m_minRSSI, m_maxRSSI, m_aveRSSI / m_rssiCount);
 			else
-				LogMessage("DMR Slot %u, received RF end of voice transmission, %.1f seconds, BER: %.1f%%", m_slotNo, float(m_rfFrames) / 16.667F, float(m_rfErrs * 100U) / float(m_rfBits));
+				LogMessage(">>DMR Slot %u, received RF end of voice transmission, %.1f seconds, BER: %.1f%%", m_slotNo, float(m_rfFrames) / 16.667F, float(m_rfErrs * 100U) / float(m_rfBits));
 
 			if (m_rfTimeout) {
 				writeEndRF();
@@ -403,7 +405,7 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 				m_display->writeDMRRSSI(m_slotNo, m_rssi);
 			}
 
-			LogMessage("DMR Slot %u, received RF data header from %s to %s%s, %u blocks", m_slotNo, src.c_str(), gi ? "TG ": "", dst.c_str(), m_rfFrames);
+			LogMessage(">>DMR Slot %u, received RF data header from %s to %s%s, %u blocks", m_slotNo, src.c_str(), gi ? "TG ": "", dst.c_str(), m_rfFrames);
 
 			if (m_rfFrames == 0U) {
 				LogMessage("DMR Slot %u, ended RF data transmission", m_slotNo);
@@ -419,9 +421,12 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 			LogMessage("DT_RATE_12_DATA Packet received");
 			
 			bool gi = dataHeader.getGI();
-			unsigned int srcId = GPSsrcId; // Grabs the Global value... FixMe
-			unsigned int dstId = 272999;   // APRS Destination for Ireland
-			LogDebug("src: %d, dst: %d", srcId, dstId);
+//			unsigned int srcId = dataHeader.getSrcId();
+//			unsigned int dstId = dataHeader.getDstId();
+
+			unsigned int srcId = 3117722; // Grabs the Global value... FixMe
+			unsigned int dstId = 9;   // APRS Destination for Ireland
+			LogDebug("Using src: %d, dst: %d", srcId, dstId);
 			if (!CDMRAccessControl::validateSrcId(srcId)) {
 				LogMessage("DMR Slot %u, RF user %u rejected", m_slotNo, srcId);
 				return false;
@@ -466,13 +471,19 @@ bool CDMRSlot::writeModem(unsigned char *data, unsigned int len)
 			uint8_t lonDeg = ((payload[4U] & 0x03) << 6) + ((payload[5U] & 0xFC) >> 2);
 			uint8_t lonMin = ((payload[5U] & 0x03) << 4) + ((payload[6U] & 0xF0) >> 4);
 			uint32_t lonSec = ((payload[6U] & 0x0F) << 8) + (payload[7U] << 2) + ((payload[8U] & 0xA0) >>6);
-			uint8_t alt = ( ((payload[8U] & 0x3F) << 8 ) + payload[9U]);  
+			uint8_t alt = ( ((payload[8U] & 0x3F) << 8 ) + payload[9U]);              
+            
 
 			if ((payload[0U] & 0x10U) >> 4){
 			 	LogDebug("GPS Fix");
 			 	LogDebug("Position: %02d %02d.%03d%s, %03d %02d.%03d%s at Alt of %dm",	latDeg, latMin, latSec,latSign,
 										                      							lonDeg, lonMin, lonSec, lonSign, alt);
 				
+                float latitude = (latDeg*360 + latMin*60 + latSec)/360.0; 
+                float longitude = (lonDeg*360 + lonMin*60 + lonSec)/360.0; 
+                LogDebug("Converted GPS to %f, %f", latitude, longitude);
+                m_aprshelper->send("N9OTJ", latitude, longitude);
+                
 				// Winging it completely! All I can say is it doesn't crash! 
 				// Does BM even accept this type of data frame?
 				bptc.encode(payload, data + 2U);
@@ -1804,6 +1815,15 @@ void CDMRSlot::init(unsigned int colorCode, bool embeddedLCOnly, bool dumpTAData
 	slotType.setColorCode(colorCode);
 	slotType.setDataType(DT_IDLE);
 	slotType.getData(m_idle + 2U);
+    
+    std::string callsign = "N9OTJ";
+    std::string suffix = "11";
+    std::string password = "14479";
+    std::string address = "aprs.mcducklabs.com";
+    int port = 14580;    
+    
+    m_aprshelper = new CAPRSHelper(callsign, suffix, password, address, port);
+    m_aprshelper->open();
 }
 
 
